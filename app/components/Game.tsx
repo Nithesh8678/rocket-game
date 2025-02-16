@@ -613,9 +613,11 @@ const Game = () => {
         />
         <div className="absolute top-4 left-4 flex gap-2">
           {[...Array(lives)].map((_, i) => (
-            <div
+            <img
               key={i}
-              className="w-6 h-6 bg-red-500 rounded-full"
+              src="/live.png"
+              alt="Life"
+              className="w-6 h-6"
               title="Life"
             />
           ))}

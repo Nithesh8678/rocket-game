@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import StatsPanel from "./StatsPanel";
 
 interface Beam {
@@ -50,6 +50,15 @@ const Game = () => {
   const [isGameOver, setIsGameOver] = useState(false);
   const [lives, setLives] = useState(3);
   const [isRespawning, setIsRespawning] = useState(false);
+  const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+
+  useEffect(() => {
+    setCanvasSize({
+      width: Math.min(800, window.innerWidth - 300),
+      height: Math.min(600, window.innerHeight - 40),
+    });
+  }, []);
+
   const gameStateRef = useRef({
     keys: {} as { [key: string]: boolean },
     lastShot: 0,
@@ -60,8 +69,8 @@ const Game = () => {
     explosions: [] as Explosion[],
     respawnTimer: 0,
     character: {
-      x: 0,
-      y: 0,
+      x: 400,
+      y: 300,
       width: 50,
       height: 50,
       speed: 5,
@@ -77,17 +86,10 @@ const Game = () => {
   const [highScore, setHighScore] = useState(0);
   const [level, setLevel] = useState(1);
 
-  const canvasWidth = useMemo(() => Math.min(800, window.innerWidth - 300), []);
-  const canvasHeight = useMemo(
-    () => Math.min(600, window.innerHeight - 40),
-    []
-  );
-
-  // Initialize character position
   useEffect(() => {
-    gameStateRef.current.character.x = canvasWidth / 2;
-    gameStateRef.current.character.y = canvasHeight * 0.8;
-  }, [canvasWidth, canvasHeight]);
+    gameStateRef.current.character.x = canvasSize.width / 2;
+    gameStateRef.current.character.y = canvasSize.height * 0.8;
+  }, [canvasSize]);
 
   const resetGame = () => {
     const gameState = gameStateRef.current;
@@ -95,8 +97,8 @@ const Game = () => {
     gameState.asteroids = [];
     gameState.explosions = [];
     gameState.asteroidsDestroyed = 0;
-    gameState.character.x = canvasWidth / 2;
-    gameState.character.y = canvasHeight * 0.8;
+    gameState.character.x = canvasSize.width / 2;
+    gameState.character.y = canvasSize.height * 0.8;
     gameState.character.isInvulnerable = false;
     setScore(0);
     setLevel(1);
@@ -107,12 +109,11 @@ const Game = () => {
 
   const respawnPlayer = () => {
     const gameState = gameStateRef.current;
-    gameState.character.x = canvasWidth / 2;
-    gameState.character.y = canvasHeight * 0.8;
+    gameState.character.x = canvasSize.width / 2;
+    gameState.character.y = canvasSize.height * 0.8;
     gameState.character.isInvulnerable = true;
     setIsRespawning(false);
 
-    // Make player vulnerable again after 2 seconds
     setTimeout(() => {
       gameState.character.isInvulnerable = false;
     }, 2000);
@@ -125,19 +126,16 @@ const Game = () => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Create images using the global Image constructor
     const bgImage = document.createElement("img");
     bgImage.src = "/space_bg.png";
 
     const rocketImage = document.createElement("img");
     rocketImage.src = "/rocket.png";
 
-    // Wait for images to load
     Promise.all([
       new Promise((resolve) => (bgImage.onload = resolve)),
       new Promise((resolve) => (rocketImage.onload = resolve)),
     ]).then(() => {
-      // Start game loop after images are loaded
       gameLoop();
     });
 
@@ -151,8 +149,8 @@ const Game = () => {
     const POINTS_PER_ASTEROID = 100;
     const PARTICLE_COUNT = 10;
     const PARTICLE_LIFE = 30;
-    const POWER_UP_DURATION = 10000; // 10 seconds
-    const POWER_UP_SPAWN_RATE = 30000; // Increased to 30 seconds
+    const POWER_UP_DURATION = 10000;
+    const POWER_UP_SPAWN_RATE = 30000;
     let lastPowerUpSpawn = 0;
 
     function createExplosion(x: number, y: number, size: number) {
@@ -163,7 +161,6 @@ const Game = () => {
         particles: [],
       };
 
-      // Create particles
       for (let i = 0; i < PARTICLE_COUNT; i++) {
         const angle = (Math.PI * 2 * i) / PARTICLE_COUNT;
         explosion.particles.push({
@@ -187,11 +184,9 @@ const Game = () => {
       )
         return;
 
-      // Only create new asteroid if we haven't reached the maximum
       if (gameState.asteroids.length < MAX_ASTEROIDS) {
         const size = Math.random() * 20 + 20;
         const x = Math.random() * (canvas.width - size * 2) + size;
-        // Increase speed based on level
         const speedX = (Math.random() - 0.5) * 2 * (1 + level * 0.1);
         const speedY = (Math.random() * 1 + 0.5) * (1 + level * 0.1);
 
@@ -211,7 +206,6 @@ const Game = () => {
 
     function createPowerUp() {
       const currentTime = Date.now();
-      // Only spawn if no power-ups are active or on screen
       if (
         currentTime - lastPowerUpSpawn < POWER_UP_SPAWN_RATE ||
         gameState.powerUps.length > 0 ||
@@ -220,7 +214,7 @@ const Game = () => {
         return;
 
       const types = ["rapidFire", "tripleShot", "wideBeam"];
-      const colors = ["#ff0", "#0ff", "#f0f"]; // Yellow, Cyan, Magenta
+      const colors = ["#ff0", "#0ff", "#f0f"];
       const randomIndex = Math.floor(Math.random() * types.length);
 
       const powerUp: PowerUp = {
@@ -239,18 +233,15 @@ const Game = () => {
       const currentTime = Date.now();
       const { character, activePowerUp, powerUpEndTime } = gameState;
 
-      // Check if power-up has expired
       if (activePowerUp && currentTime > powerUpEndTime) {
         gameState.activePowerUp = null;
       }
 
-      // Adjust cooldown for rapid fire
       const currentCooldown =
         activePowerUp === "rapidFire" ? SHOT_COOLDOWN / 3 : SHOT_COOLDOWN;
       if (currentTime - gameState.lastShot < currentCooldown) return;
 
       if (activePowerUp === "tripleShot") {
-        // Create three beams at different angles
         [-20, 0, 20].forEach((angle) => {
           const rad = (angle * Math.PI) / 180;
           const beam: Beam = {
@@ -266,7 +257,6 @@ const Game = () => {
           gameState.beams.push(beam);
         });
       } else if (activePowerUp === "wideBeam") {
-        // Create a wider beam
         const beam: Beam = {
           x: character.x + character.width / 2 - 15,
           y: character.y + character.height / 2,
@@ -279,7 +269,6 @@ const Game = () => {
         };
         gameState.beams.push(beam);
       } else {
-        // Normal beam
         const beam: Beam = {
           x: character.x + character.width / 2 - 5,
           y: character.y + character.height / 2,
@@ -310,12 +299,10 @@ const Game = () => {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      // Flash the character when invulnerable
       if (character.isInvulnerable) {
         ctx.globalAlpha = Math.sin(Date.now() / 100) * 0.5 + 0.5;
       }
 
-      // Draw rocket image instead of rectangle
       ctx.drawImage(
         rocketImage,
         character.x,
@@ -332,20 +319,16 @@ const Game = () => {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
       beams.forEach((beam, index) => {
-        // Move beam upward
         beam.y -= beam.speed;
 
-        // Remove beam if it goes off screen
         if (beam.y + beam.height < 0) {
           beams.splice(index, 1);
           return;
         }
 
-        // Draw beam
         ctx.fillStyle = beam.color;
         ctx.fillRect(beam.x, beam.y, beam.width, beam.height);
 
-        // Add glow effect
         ctx.shadowColor = "yellow";
         ctx.shadowBlur = 15;
         ctx.fillRect(beam.x, beam.y, beam.width, beam.height);
@@ -359,12 +342,10 @@ const Game = () => {
       if (!ctx) return;
       explosions.forEach((explosion, explosionIndex) => {
         explosion.particles = explosion.particles.filter((particle) => {
-          // Update particle position
           particle.x += particle.speedX;
           particle.y += particle.speedY;
           particle.life--;
 
-          // Draw particle
           ctx.beginPath();
           ctx.arc(
             particle.x,
@@ -380,7 +361,6 @@ const Game = () => {
           return particle.life > 0;
         });
 
-        // Remove explosion if all particles are dead
         if (explosion.particles.length === 0) {
           explosions.splice(explosionIndex, 1);
         }
@@ -392,11 +372,9 @@ const Game = () => {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
       asteroids.forEach((asteroid, index) => {
-        // Move asteroid
         asteroid.x += asteroid.speedX;
         asteroid.y += asteroid.speedY;
 
-        // Bounce off walls
         if (
           asteroid.x - asteroid.size < 0 ||
           asteroid.x + asteroid.size > canvas.width
@@ -404,17 +382,14 @@ const Game = () => {
           asteroid.speedX *= -1;
         }
 
-        // Remove if below screen and reduce life
         if (asteroid.y - asteroid.size > canvas.height) {
           asteroids.splice(index, 1);
-          // Only reduce life if game is still active
           if (!isGameOver && !character.isInvulnerable) {
             setLives((prev) => {
               const newLives = prev - 1;
               if (newLives <= 0) {
                 setIsGameOver(true);
               } else {
-                // Create explosion at the bottom where asteroid disappeared
                 createExplosion(asteroid.x, canvas.height, asteroid.size);
                 setIsRespawning(true);
               }
@@ -424,14 +399,12 @@ const Game = () => {
           return;
         }
 
-        // Draw asteroid
         ctx.beginPath();
         ctx.arc(asteroid.x, asteroid.y, asteroid.size, 0, Math.PI * 2);
         ctx.fillStyle = asteroid.color;
         ctx.fill();
         ctx.closePath();
 
-        // Add crater effect
         ctx.beginPath();
         ctx.arc(
           asteroid.x - asteroid.size / 3,
@@ -449,23 +422,19 @@ const Game = () => {
     function drawPowerUps() {
       const { powerUps } = gameState;
       powerUps.forEach((powerUp, index) => {
-        // Move power-up down
         powerUp.y += 2;
 
-        // Remove if off screen
         if (powerUp.y > canvas.height) {
           powerUps.splice(index, 1);
           return;
         }
 
-        // Draw power-up
         ctx.beginPath();
         ctx.arc(powerUp.x, powerUp.y, powerUp.size, 0, Math.PI * 2);
         ctx.fillStyle = powerUp.color;
         ctx.fill();
         ctx.closePath();
 
-        // Add glow effect
         ctx.shadowColor = powerUp.color;
         ctx.shadowBlur = 10;
         ctx.fill();
@@ -477,25 +446,20 @@ const Game = () => {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      // Draw background image
       ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
     }
 
     function keepCharacterInBounds() {
       const { character } = gameState;
-      // Left boundary
       if (character.x < 0) {
         character.x = 0;
       }
-      // Right boundary
       if (character.x + character.width > canvas.width) {
         character.x = canvas.width - character.width;
       }
-      // Top boundary
       if (character.y < 0) {
         character.y = 0;
       }
-      // Bottom boundary
       if (character.y + character.height > canvas.height) {
         character.y = canvas.height - character.height;
       }
@@ -512,16 +476,13 @@ const Game = () => {
           if (distance < asteroid.size) {
             createExplosion(asteroid.x, asteroid.y, asteroid.size);
 
-            // Update score and check for level up
             setScore((prevScore) => {
               const newScore = prevScore + POINTS_PER_ASTEROID;
 
-              // Check for level up at exact 1000 point intervals
               if (newScore % POINTS_PER_LEVEL === 0) {
                 setLevel((prev) => prev + 1);
               }
 
-              // Update high score if needed
               if (newScore > highScore) {
                 setHighScore(newScore);
               }
@@ -548,10 +509,8 @@ const Game = () => {
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance < asteroid.size + character.width / 2) {
-          // Create explosion at player position
           createExplosion(playerCenterX, playerCenterY, character.width);
 
-          // Reduce lives and check for game over
           setLives((prev) => {
             const newLives = prev - 1;
             if (newLives <= 0) {
@@ -578,12 +537,10 @@ const Game = () => {
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance < powerUp.size + character.width / 2) {
-          // Activate power-up
           gameState.activePowerUp = powerUp.type;
           gameState.powerUpEndTime = Date.now() + POWER_UP_DURATION;
           powerUps.splice(index, 1);
 
-          // Visual feedback
           createExplosion(powerUp.x, powerUp.y, powerUp.size * 2);
         }
       });
@@ -604,7 +561,6 @@ const Game = () => {
         checkCollisions();
         checkPowerUpCollision();
         if (checkPlayerCollision()) {
-          // Don't stop the game loop, just wait for respawn
           drawAsteroids();
           drawBeams();
           drawExplosions();
@@ -631,15 +587,14 @@ const Game = () => {
     document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("keyup", handleKeyUp);
 
-    // Don't start game loop immediately, wait for images to load
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("keyup", handleKeyUp);
       cancelAnimationFrame(animationFrameId);
     };
   }, [
-    canvasWidth,
-    canvasHeight,
+    canvasSize.width,
+    canvasSize.height,
     isGameOver,
     score,
     highScore,
@@ -652,8 +607,8 @@ const Game = () => {
       <div className="relative">
         <canvas
           ref={canvasRef}
-          width={canvasWidth}
-          height={canvasHeight}
+          width={canvasSize.width}
+          height={canvasSize.height}
           className="border border-black rounded-lg"
         />
         <div className="absolute top-4 left-4 flex gap-2">
